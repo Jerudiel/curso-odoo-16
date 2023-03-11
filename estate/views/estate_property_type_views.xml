@@ -7,6 +7,19 @@
         <field name="arch" type="xml">
             <form>
                 <sheet>
+                    <field name="offer_ids" invisible="True"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" name="%(estate.estate_property_offer_action)d" icon="fa-money" type="action">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="offer_count" modifiers="{'readonly': true}"/>
+                                </span>
+                                <span>
+                                    Offers
+                                </span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title mb24">
                         <h1>
                             <field name="name"/>
@@ -33,6 +46,7 @@
         <field name="model">estate.property.type</field>
         <field name="arch" type="xml">
             <tree>
+                <field name="sequence" widget="handle"/>
                 <field name="name" string="Name"/>
             </tree>
         </field>

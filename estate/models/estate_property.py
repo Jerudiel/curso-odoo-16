@@ -6,6 +6,7 @@ from odoo.tools.float_utils import float_compare
 class EstateProperty(models.Model):
     _name = "estate.property"
     _description = "Estate Property"
+    _order = "id desc"
 
     name = fields.Char(required=True)
     description = fields.Text()
@@ -90,6 +91,7 @@ class EstateProperty(models.Model):
             raise UserError(_("There can only be one offer as accepted"))
         self.selling_price = offer_accepted.price
         self.buyer = offer_accepted.partner_id
+        self.state = 'offer accepted'
         return True
 
     @api.constrains("selling_price", "expected_price")
