@@ -45,3 +45,8 @@ class EstatePropertyOffer(models.Model):
     def action_cancel(self):
         for record in self:
             record.status = 'refused'
+    
+    @api.model
+    def create(self, vals):
+        self.env['estate.property'].browse(vals['property_id']).check_offer(vals['price'])
+        return super(EstatePropertyOffer, self).create(vals)

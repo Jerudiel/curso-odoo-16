@@ -1,6 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools.float_utils import float_compare
+from odoo.tools.float_utils import float_compare, float_is_zero
 
 
 class EstateProperty(models.Model):
@@ -34,8 +34,8 @@ class EstateProperty(models.Model):
         default='new'
         )
     property_type_id = fields.Many2one("estate.property.type", string="Type")
-    buyer = fields.Many2one('res.partner', string='Buyer', copy=False)
-    salesperson = fields.Many2one('res.partner', string='Salesman', default=lambda self: self.env.user.partner_id)
+    buyer_id = fields.Many2one('res.partner', string='Buyer', copy=False)
+    user_id = fields.Many2one('res.users', string='Salesman', default=lambda self: self.env.user)
     tag_ids = fields.Many2many('estate.property.tag')
     offer_ids = fields.One2many("estate.property.offer", "property_id")
     total_area = fields.Integer(compute="_compute_total")
@@ -86,16 +86,27 @@ class EstateProperty(models.Model):
         return True
     
     def action_set_offer(self):
-        offer_accepted = self.offer_ids.search([('status', '=', 'accepted')])
+        offer_accepted = self.offer_ids.search([('status', '=', 'accepted'), ('property_id', '=', self.id)])
         if len(offer_accepted) > 1:
             raise UserError(_("There can only be one offer as accepted"))
         self.selling_price = offer_accepted.price
-        self.buyer = offer_accepted.partner_id
+        self.buyer_id = offer_accepted.partner_id
         self.state = 'offer accepted'
         return True
 
     @api.constrains("selling_price", "expected_price")
     def _check_selling_price(self):
         for record in self:
-            if float_compare(record.expected_price * 0.9, record.selling_price, precision_digits=2) == 1:
+            if (not float_is_zero(record.selling_price, precision_digits=2)) and float_compare(record.expected_price * 0.9, record.selling_price, precision_digits=2) == 1:
                 raise ValidationError(_("The selling price must be at least 90% of the expected price. You must reduce the expected price if you want to accept this offer"))
+    
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_new_or_cancelled_property(self):
+        if any( record.state in ['offer received', 'offer accepted', 'sold'] for record in self):
+            raise UserError(_("Only new and cancelled properties can be deleted."))
+    
+    def check_offer(self, offer_price):
+        max_offer = max(self.offer_ids.mapped("price"), default=0)
+        if max_offer and offer_price < max_offer:
+            raise UserError(_(f"The offer must be higher than {max_offer}."))
+        self.state = 'offer received'
